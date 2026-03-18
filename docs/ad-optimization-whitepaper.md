@@ -1,15 +1,5 @@
 # Ad Optimization Whitepaper
 
-## Title
-
-Adaptive Cross-Platform Ad Delivery and Budget Reallocation for X, TikTok, and Instagram
-
-## Version
-
-- Version: `0.2`
-- Date: `2026-03-18`
-- Scope: POC design for `ad-engine`
-
 ## 1. Executive Summary
 
 This whitepaper defines the optimization algorithm for `ad-engine`, a proof-of-concept system that:
@@ -49,43 +39,9 @@ This becomes harder because:
 - a platform can look temporarily strong due to low sample size
 - budget changes too frequently can destabilize learning
 
-## 3. Product Context
+## 3. Borrowing From Cross-Token Rebalancing
 
-The current `ad-engine` POC consists of:
-
-- a Go REST API server
-- persistence through GORM
-- optional Redis caching through Redigo
-- a dashboard showing current allocation and performance
-- a simulated delivery loop that posts to X, TikTok, and Instagram
-
-The current implementation already includes a simple score-based rebalancer. This whitepaper proposes the next algorithmic shape that should guide future implementation.
-
-Relevant code today:
-
-- [internal/service/optimizer.go](/Users/min/ad/Projects/src/github.com/ilovelili/ad-engine/internal/service/optimizer.go)
-- [internal/service/engine.go](/Users/min/ad/Projects/src/github.com/ilovelili/ad-engine/internal/service/engine.go)
-- [internal/domain/models.go](/Users/min/ad/Projects/src/github.com/ilovelili/ad-engine/internal/domain/models.go)
-
-## 4. Reference Market Signal
-
-A recent PR TIMES announcement from renue describes an "advertising agency AI agent" that spans campaign design, creative production, cross-platform delivery, monitoring, and budget reallocation across major ad platforms including X, TikTok, and Instagram/Meta. It also explicitly keeps human approval in the loop for critical decisions and acknowledges legal and policy constraints.
-
-Source:
-
-- PR TIMES, 2026-02-19: [renue、「広告代理AIエージェント」を開発、Web広告のクリエイティブ制作、配信、運用まで、生成AIが完全代行](https://prtimes.jp/main/html/rd/p/000000022.000091210.html)
-
-Inference from that reference:
-
-- the competitive direction is not just automatic bidding, but an orchestration layer over multiple ad APIs
-- budget reallocation is only one part of the system, but it is central to performance differentiation
-- human approval and compliance boundaries should be first-class parts of the design
-
-Our POC should therefore prioritize a credible optimization layer and clean decision logging, even before deep creative automation.
-
-## 4.1 Borrowing From Cross-Token Rebalancing
-
-We should explicitly borrow ideas from cross-platform token exchange rebalancing.
+We borrow ideas from cross-platform token exchange rebalancing.
 
 Why this analogy is useful:
 
@@ -111,7 +67,7 @@ Important difference:
 
 So we borrow the rebalancing structure, but we do not assume market-like immediacy.
 
-## 5. Optimization Objectives
+## 4. Optimization Objectives
 
 The optimizer should support a configurable primary objective:
 
@@ -131,9 +87,9 @@ Secondary objectives:
 - preserve platform learning with a minimum allocation floor
 - provide explanations for each rebalance decision
 
-## 6. Design Principles
+## 5. Design Principles
 
-### 6.1 Normalize Before Comparing
+### 5.1 Normalize Before Comparing
 
 Raw platform metrics are not directly comparable. We should compare derived normalized features such as:
 
@@ -145,7 +101,7 @@ Raw platform metrics are not directly comparable. We should compare derived norm
 - spend velocity
 - impression velocity
 
-### 6.2 Separate Signal From Policy
+### 5.2 Separate Signal From Policy
 
 The optimizer should produce an unconstrained platform score first. Then policy constraints should shape the final allocation:
 
@@ -155,11 +111,11 @@ The optimizer should produce an unconstrained platform score first. Then policy 
 - max step-down per cycle
 - pacing constraints
 
-### 6.3 Reward Confidence, Not Just Performance
+### 5.3 Reward Confidence, Not Just Performance
 
 A platform with 2 conversions on tiny spend should not immediately dominate one with 200 conversions on meaningful spend. Confidence weighting is required.
 
-### 6.4 Keep Rebalance Intervals Stable
+### 5.4 Keep Rebalance Intervals Stable
 
 Rebalancing too frequently causes thrashing. For the POC:
 
@@ -168,7 +124,7 @@ Rebalancing too frequently causes thrashing. For the POC:
 
 This is the same logic used in threshold-based portfolio rebalancing: do not trade unless the drift is meaningful enough to justify the move.
 
-### 6.5 Human Approval for High-Risk Actions
+### 5.5 Human Approval for High-Risk Actions
 
 The system should require approval for:
 
@@ -177,9 +133,9 @@ The system should require approval for:
 - pushing creative that has not passed review
 - violating policy or brand-safety constraints
 
-## 7. Proposed Algorithm
+## 6. Proposed Algorithm
 
-## 7.1 Overview
+## 6.1 Overview
 
 We recommend a 5-stage decision pipeline:
 
@@ -189,7 +145,7 @@ We recommend a 5-stage decision pipeline:
 4. Apply portfolio-style rebalance threshold and reallocation friction
 5. Apply pacing and safety rules, then publish the new budget split
 
-## 7.2 Input Metrics
+## 6.2 Input Metrics
 
 Per platform `p`, for a rolling window `W`, collect:
 
@@ -215,7 +171,7 @@ Stability metrics:
 - `conversion_weight_p = log(1 + conversions_p)`
 - `recency_weight_p = exp(-lambda * age_minutes)`
 
-## 7.3 Utility Score
+## 6.3 Utility Score
 
 For a conversions-first objective, define:
 
@@ -241,7 +197,7 @@ blended_score_p =
 
 `prior_score_p` is a prior belief for each platform. In early POC phases, it can be a neutral default like `0.5`, or a platform prior based on historical campaigns.
 
-## 7.4 Exploration Bonus
+## 6.4 Exploration Bonus
 
 To avoid locking onto a local optimum too early, add an uncertainty bonus:
 
@@ -263,7 +219,7 @@ decision_score_p = blended_score_p + exploration_bonus_p
 
 This is a UCB-style bandit term. For production later, Thompson Sampling would also be a strong choice, but UCB is easier to explain and debug in an early-stage system.
 
-## 7.5 Convert Score to Allocation
+## 6.5 Convert Score to Allocation
 
 Transform scores into target percentages with softmax:
 
@@ -284,7 +240,7 @@ After softmax, convert the raw weights into constrained target shares with:
 
 This matches portfolio construction logic where target weights are bounded by policy constraints.
 
-## 7.6 Rebalance Threshold and Execution Friction
+## 6.6 Rebalance Threshold and Execution Friction
 
 The system should not move budget on every small ranking change.
 
@@ -322,7 +278,7 @@ Where:
 
 This is directly inspired by cross-token rebalancing systems where the model must weigh target optimality against the cost of moving capital.
 
-## 7.7 Apply Business Constraints
+## 6.7 Apply Business Constraints
 
 After deriving `target_share_p`, enforce:
 
@@ -334,7 +290,7 @@ After deriving `target_share_p`, enforce:
 
 These values are suitable defaults for the POC and should be configurable.
 
-## 7.8 Budget Pacing Layer
+## 6.8 Budget Pacing Layer
 
 The optimizer should not only choose shares; it should also decide how fast to spend.
 
@@ -351,7 +307,7 @@ Rules:
 
 This separates "where budget should go" from "how fast the campaign should spend."
 
-## 7.9 Delayed Conversion Handling
+## 6.9 Delayed Conversion Handling
 
 Some platforms or products have delayed conversion attribution. To avoid penalizing those channels too early:
 
@@ -369,7 +325,7 @@ effective_conversion_signal_p =
 
 This is especially important if TikTok or Instagram upper-funnel activity converts later through branded search or direct traffic.
 
-## 8. Recommended POC Formula
+## 7. Recommended POC Formula
 
 For the next implementation step in `ad-engine`, we recommend the following simple but credible formula:
 
@@ -416,7 +372,7 @@ Friction interpretation:
 
 - larger planned moves should be damped because the act of reallocating itself creates execution cost
 
-## 9. Decision Explainability
+## 8. Decision Explainability
 
 Every rebalance event should produce a machine-readable explanation:
 
@@ -438,7 +394,7 @@ Every rebalance event should produce a machine-readable explanation:
 
 This should be stored as part of a rebalance log. Explainability matters because operators need to know whether a shift came from real performance, sparse data, or a safety rule.
 
-## 10. Dashboard Requirements
+## 9. Dashboard Requirements
 
 The dashboard should show:
 
@@ -455,7 +411,7 @@ Future additions:
 - exploration vs exploitation indicator
 - drift or anomaly warning
 
-## 11. Data Model Extensions
+## 10. Data Model Extensions
 
 The current schema should be extended over time with:
 
@@ -477,7 +433,7 @@ Suggested `rebalance_events` fields:
 - `explanation_json`
 - `created_at`
 
-## 12. Safety, Policy, and Compliance
+## 11. Safety, Policy, and Compliance
 
 The optimization engine must not be treated as a fully autonomous business actor. Required controls:
 
@@ -490,7 +446,7 @@ The optimization engine must not be treated as a fully autonomous business actor
 
 This aligns with the market direction seen in the renue announcement, which publicly states that final approvals and budget ceilings remain under human control.
 
-## 13. POC-to-Production Roadmap
+## 12. POC-to-Production Roadmap
 
 ### Phase 1: Heuristic Optimizer
 
@@ -518,17 +474,7 @@ This aligns with the market direction seen in the renue announcement, which publ
 - forecast-based budget planning
 - approval workflow and rollback controls
 
-## 14. Implementation Recommendation For This Repo
-
-The next concrete change to `ad-engine` should be:
-
-1. Extend the optimizer in [internal/service/optimizer.go](/Users/min/ad/Projects/src/github.com/ilovelili/ad-engine/internal/service/optimizer.go) to compute normalized `CTR`, `CVR`, `CPA`, and `ROAS`.
-2. Add confidence weighting and smoothing to prevent sudden allocation swings.
-3. Add a `rebalance_events` model and persist explanation payloads.
-4. Add dashboard fields for `CPA`, `CVR`, and rebalance reasons.
-5. Keep the current mock publishers and simulation loop while the optimization logic matures.
-
-## 15. Conclusion
+## 14. Conclusion
 
 The right algorithm for this product is not a single formula, but a decision stack:
 
