@@ -1,0 +1,192 @@
+:root {
+  --bg: #f4efe7;
+  --card: rgba(255, 250, 245, 0.9);
+  --ink: #1f2933;
+  --muted: #52606d;
+  --line: rgba(82, 96, 109, 0.16);
+  --x: #2727d9;
+  --tiktok: #ff5c8a;
+  --instagram: #ff9f43;
+  --accent: #0f766e;
+  --shadow: 0 30px 60px rgba(31, 41, 51, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(255, 159, 67, 0.28), transparent 22%),
+    radial-gradient(circle at top right, rgba(39, 39, 217, 0.18), transparent 25%),
+    linear-gradient(135deg, #f7f2eb 0%, #eef5f1 100%);
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+}
+
+.hero,
+.panel,
+.summary {
+  margin-bottom: 24px;
+}
+
+.hero,
+.panel,
+.metric-card,
+.allocation-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+.hero {
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: end;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 720px;
+  font-size: clamp(2rem, 3vw, 3.5rem);
+  line-height: 1.05;
+}
+
+.lede,
+.campaign-meta,
+.allocation-card p,
+th,
+td,
+span {
+  color: var(--muted);
+}
+
+.primary {
+  border: 0;
+  background: var(--ink);
+  color: white;
+  padding: 14px 20px;
+  border-radius: 999px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metric-card,
+.panel {
+  padding: 24px;
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 1.8rem;
+  color: var(--ink);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.allocation-bars {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.allocation-card {
+  padding: 18px;
+}
+
+.allocation-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.bar-track {
+  height: 14px;
+  background: rgba(82, 96, 109, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 14px 0 12px;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.platform-x .bar-fill {
+  background: linear-gradient(90deg, #1d4ed8, var(--x));
+}
+
+.platform-tiktok .bar-fill {
+  background: linear-gradient(90deg, #ef476f, var(--tiktok));
+}
+
+.platform-instagram .bar-fill {
+  background: linear-gradient(90deg, #f97316, var(--instagram));
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .panel-header {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .summary,
+  .allocation-bars {
+    grid-template-columns: 1fr;
+  }
+}

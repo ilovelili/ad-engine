@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CREVO AI — MVP Prototype</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black:    #111111;
+  --g900:     #222222;
+  --g700:     #444444;
+  --g500:     #777777;
+  --g400:     #999999;
+  --g300:     #BBBBBB;
+  --g200:     #DDDDDD;
+  --g100:     #E8E8E8;
+  --g50:      #F5F5F5;
+  --white:    #FFFFFF;
+  --sidebar:  220px;
+  --header:   56px;
+  --r:        6px;
+  --tr:       0.17s ease;
+}
+body {
+  font-family: -apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;
+  background: var(--g50); color: var(--black);
+  height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+  font-size: 14px;
+}
+
+/* ──── HEADER ──── */
+header {
+  height: var(--header); background: var(--white);
+  border-bottom: 1px solid var(--g100);
+  display: flex; align-items: center; padding: 0 22px; gap: 28px;
+  flex-shrink: 0; z-index: 10;
+}
+.logo {
+  display: flex; align-items: center; gap: 9px;
+  font-family: Georgia,serif; font-size: 15px; font-weight: 700;
+  color: var(--black); text-decoration: none; flex-shrink: 0;
+}
+.logo-mark { width: 22px; height: 22px; background: var(--black); border-radius: 3px; }
+nav { display: flex; gap: 3px; }
+.nav-btn {
+  padding: 5px 14px; border-radius: var(--r); border: none;
+  background: transparent; cursor: pointer; font-size: 13px;
+  color: var(--g500); font-family: inherit; transition: all var(--tr);
+}
+.nav-btn:hover { background: var(--g50); color: var(--black); }
+.nav-btn.active { background: var(--black); color: var(--white); }
+.header-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.plan-badge {
+  padding: 3px 10px; background: var(--black); color: var(--white);
+  border-radius: 20px; font-size: 11px; font-weight: 600;
+}
+.avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--g100);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--g500); cursor: pointer;
+}
+
+/* ──── LAYOUT ──── */
+.main-wrapper { display: flex; flex: 1; overflow: hidden; }
+.sidebar {
+  width: var(--sidebar); background: var(--white);
+  border-right: 1px solid var(--g100);
+  display: flex; flex-direction: column; padding: 14px 10px;
+  overflow-y: auto; flex-shrink: 0;
+}
+.sbl { font-size: 10px; font-weight: 700; color: var(--g300); letter-spacing: 0.8px; text-transform: uppercase; padding: 8px 10px 5px; }
+.sbi {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; border-radius: var(--r); cursor: pointer;
+  color: var(--g500); font-size: 12.5px; border: none;
+  background: transparent; width: 100%; text-align: left; font-family: inherit;
+  transition: all var(--tr);
+}
+.sbi:hover { background: var(--g50); color: var(--black); }
+.sbi.active { background: var(--g50); color: var(--black); font-weight: 600; }
+.sbi-ico { width: 17px; text-align: center; font-size: 14px; flex-shrink: 0; }
+.sbi-ct {
+  margin-left: auto; background: var(--g100); color: var(--g500);
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px;
+}
+.content { flex: 1; overflow-y: auto; padding: 26px 30px; }
+.screen { display: none; animation: fi 0.2s ease; }
+.screen.active { display: block; }
+@keyframes fi { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
+
+/* ──── SHARED ──── */
+.page-title { font-family: Georgia,serif; font-size: 21px; font-weight: 700; margin-bottom: 3px; }
+.page-sub { font-size: 12.5px; color: var(--g500); }
+.panel { background: var(--white); border: 1px solid var(--g100); border-radius: var(--r); padding: 18px; }
+.panel-title { font-size: 12.5px; font-weight: 700; margin-bottom: 14px; }
+.btn {
+  padding: 9px 20px; border-radius: var(--r); border: none;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--tr); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-p { background: var(--black); color: var(--white); }
+.btn-p:hover { background: var(--g900); }
+.btn-s { background: var(--white); color: var(--black); border: 1.5px solid var(--g100); }
+.btn-s:hover { border-color: var(--black); }
+.btn-g { background: transparent; color: var(--g500); padding: 9px 12px; }
+.btn-g:hover { color: var(--black); background: var(--g50); }
+.btn-sm { padding: 5px 12px; font-size: 11.5px; }
+.btn-lg { padding: 12px 26px; font-size: 14.5px; }
+.tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:600; }
+.tag-active { background:#111; color:#fff; }
+.tag-paused { background:var(--g100); color:var(--g500); }
+.tag-draft { background:var(--g50); color:var(--g500); border:1px solid var(--g100); }
+.ai-badge { display:inline-flex; align-items:center; gap:4px; background:var(--black); color:var(--white); padding:2px 9px; border-radius:20px; font-size:10.5px; font-weight:600; }
+.form-input,.form-textarea,.form-select {
+  padding: 9px 11px; border: 1px solid var(--g100); border-radius: var(--r);
+  font-family: inherit; font-size: 13px; color: var(--black); background: var(--white);
+  outline: none; transition: border-color var(--tr); width: 100%;
+}
+.form-input:focus,.form-textarea:focus,.form-select:focus { border-color: var(--black); }
+.form-textarea { resize: none; line-height: 1.6; }
+.form-select {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+.form-label { font-size: 12px; font-weight: 700; color: var(--black); margin-bottom: 5px; display: block; }
+.form-label small { font-weight: 400; color: var(--g500); font-size: 11px; margin-left: 4px; }
+.form-group { display: flex; flex-direction: column; gap: 0; }
+.range-slider { -webkit-appearance:none; width:100%; height:4px; background:var(--g100); border-radius:2px; outline:none; }
+.range-slider::-webkit-slider-thumb { -webkit-appearance:none; width:15px; height:15px; background:var(--black); border-radius:50%; cursor:pointer; }
+.toggle { width:36px; height:20px; border-radius:10px; cursor:pointer; position:relative; transition:background var(--tr); background:var(--g100); border:none; flex-shrink:0; }
+.toggle.on { background:var(--black); }
+.toggle::after { content:''; position:absolute; width:14px; height:14px; background:white; border-radius:50%; top:3px; left:3px; transition:transform var(--tr); }
+.toggle.on::after { transform:translateX(16px); }
+.action-bar { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding-top:20px; border-top:1px solid var(--g100); margin-top:22px; }
+
+/* ──── DASHBOARD ──── */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+.stat-card { background:var(--white); border:1px solid var(--g100); border-radius:var(--r); padding:18px; }
+.stat-card.hl { background:var(--black); border-color:var(--black); }
+.stat-lbl { font-size:11px; color:var(--g500); margin-bottom:7px; font-weight:500; }
+.stat-card.hl .stat-lbl { color:#777; }
+.stat-num { font-family:Georgia,serif; font-size:27px; font-weight:700; color:var(--black); }
+.stat-card.hl .stat-num { color:var(--white); }
+.stat-chg { font-size:11px; color:var(--g500); margin-top:3px; }
+.stat-card.hl .stat-chg { color:#777; }
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.video-item { display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid var(--g100); }
+.video-item:last-child { border-bottom:none; }
+.vthumb { width:50px; height:32px; background:var(--g100); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; }
+.vname { font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vmeta { font-size:11px; color:var(--g500); margin-top:1px; }
+.vroas { font-family:Georgia,serif; font-size:14px; font-weight:700; }
+.sdot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.sdot-on { background:#111; }
+.sdot-off { background:#CCC; }
+.pf-bar { display:flex; flex-direction:column; gap:9px; }
+.pfr { display:flex; align-items:center; gap:9px; }
+.pfn { font-size:12px; color:var(--g700); width:64px; flex-shrink:0; }
+.pft { flex:1; background:var(--g100); height:5px; border-radius:3px; overflow:hidden; }
+.pff { height:100%; background:var(--black); border-radius:3px; transition:width 1s ease; }
+.pfp { font-size:12px; font-weight:700; width:32px; text-align:right; }
+
+/* ──── WIZARD ──── */
+.wizard-steps { display:flex; align-items:center; gap:0; margin-bottom:24px; overflow-x:auto; padding-bottom:2px; }
+.ws { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--g300); white-space:nowrap; }
+.ws.active { color:var(--black); font-weight:600; }
+.ws.done { color:var(--g500); }
+.wsc {
+  width:24px; height:24px; border-radius:50%;
+  border:1.5px solid var(--g100); background:var(--white);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:var(--g300); flex-shrink:0;
+}
+.ws.active .wsc { border-color:var(--black); background:var(--black); color:var(--white); }
+.ws.done .wsc { border-color:var(--g300); color:var(--g500); }
+.wsl { width:28px; height:1px; background:var(--g100); margin:0 4px; flex-shrink:0; }
+.wsl.done { background:var(--g300); }
+
+/* Selectable cards */
+.sel-card {
+  border:1.5px solid var(--g100); border-radius:var(--r);
+  cursor:pointer; transition:all var(--tr); background:var(--white);
+}
+.sel-card:hover { border-color:var(--g400); }
+.sel-card.on { border-color:var(--black); background:var(--g50); }
+.sel-card.dark-on { border-color:var(--black); background:var(--black); color:var(--white); }
+
+/* Talent grid */
+.talent-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.talent-card { border:1.5px solid var(--g100); border-radius:var(--r); overflow:hidden; cursor:pointer; transition:border-color var(--tr); }
+.talent-card:hover { border-color:var(--g400); }
+.talent-card.on { border-color:var(--black); }
+.talent-face { height:96px; background:var(--g100); display:flex; align-items:center; justify-content:center; font-size:36px; position:relative; }
+.talent-badge { position:absolute; top:6px; right:6px; font-size:9.5px; font-weight:700; padding:2px 6px; border-radius:10px; }
+.talent-info { padding:8px 10px; }
+.talent-name { font-size:12px; font-weight:700; color:var(--black); }
+.talent-sub { font-size:10.5px; color:var(--g500); margin-top:1px; }
+
+/* Template grid */
+.tmpl-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.tmpl-card { border:1.5px solid var(--g100); border-radius:var(--r); overflow:hidden; cursor:pointer; transition:border-color var(--tr); }
+.tmpl-card:hover { border-color:var(--g400); }
+.tmpl-card.on { border-color:var(--black); }
+.tmpl-thumb { height:72px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.tmpl-info { padding:8px 10px; border-top:1px solid var(--g100); }
+.tmpl-name { font-size:12px; font-weight:700; }
+.tmpl-style { font-size:10.5px; color:var(--g500); margin-top:1px; }
+
+/* Music list */
+.music-list { display:flex; flex-direction:column; gap:8px; }
+.music-row {
+  display:flex; align-items:center; gap:12px; padding:10px 14px;
+  border:1.5px solid var(--g100); border-radius:var(--r); cursor:pointer;
+  transition:all var(--tr); background:var(--white);
+}
+.music-row:hover { border-color:var(--g400); }
+.music-row.on { border-color:var(--black); background:var(--g50); }
+.music-play { width:30px; height:30px; border-radius:50%; background:var(--g100); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; transition:background var(--tr); }
+.music-row.on .music-play { background:var(--black); color:white; }
+.music-name { font-size:13px; font-weight:600; flex:1; }
+.music-meta { font-size:11px; color:var(--g500); }
+.music-duration { font-size:12px; color:var(--g500); font-weight:500; }
+
+/* Narration list */
+.narr-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.narr-card { border:1.5px solid var(--g100); border-radius:var(--r); padding:12px 14px; cursor:pointer; transition:all var(--tr); }
+.narr-card:hover { border-color:var(--g400); }
+.narr-card.on { border-color:var(--black); background:var(--g50); }
+.narr-avatar { font-size:28px; margin-bottom:6px; }
+.narr-name { font-size:12.5px; font-weight:700; }
+.narr-meta { font-size:10.5px; color:var(--g500); margin-top:2px; }
+.narr-sample { margin-top:8px; display:flex; align-items:center; gap:6px; }
+.narr-play { font-size:10px; padding:3px 9px; border-radius:10px; background:var(--g100); border:none; cursor:pointer; font-family:inherit; }
+
+/* Preview */
+.preview-wrap { display:grid; grid-template-columns:1fr 340px; gap:22px; }
+.vid-area { background:var(--black); border-radius:8px; aspect-ratio:16/9; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.play-ring { width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; margin:0 auto 10px; transition:background var(--tr); }
+.play-ring:hover { background:rgba(255,255,255,0.1); }
+.play-ring::after { content:'▶'; color:white; font-size:16px; margin-left:3px; }
+.vid-caption-bar { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(0,0,0,0.7)); padding:14px; }
+.caption-pill { background:rgba(255,255,255,0.9); color:var(--black); padding:5px 11px; border-radius:3px; font-size:12.5px; font-weight:700; display:inline-block; }
+.scene-strip { display:flex; gap:8px; margin-top:10px; }
+.scene-thumb { width:52px; height:33px; background:var(--g200); border-radius:3px; cursor:pointer; border:2px solid transparent; transition:border-color var(--tr); flex-shrink:0; }
+.scene-thumb.on { border-color:var(--black); }
+.edit-pane { display:flex; flex-direction:column; gap:14px; }
+.edit-block { background:var(--white); border:1px solid var(--g100); border-radius:var(--r); overflow:hidden; }
+.edit-blk-hdr { padding:10px 14px; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.edit-blk-hdr:hover { background:var(--g50); }
+.edit-blk-body { padding:12px 14px; }
+.edit-row { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+.edit-row:last-child { margin-bottom:0; }
+.edit-lbl { font-size:11.5px; color:var(--g500); width:54px; flex-shrink:0; }
+.swatch-row { display:flex; gap:5px; }
+.swatch { width:23px; height:23px; border-radius:3px; cursor:pointer; border:2px solid transparent; }
+.swatch.on { border-color:var(--black); }
+.tr-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; }
+.tr-lbl { font-size:12px; color:var(--g700); }
+
+/* Distribute */
+.pf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:13px; margin-bottom:18px; }
+.pf-card { border:1.5px solid var(--g100); border-radius:var(--r); padding:15px; cursor:pointer; transition:all var(--tr); }
+.pf-card:hover { border-color:var(--g400); }
+.pf-card.on { border-color:var(--black); background:var(--g50); }
+.pf-ico { font-size:26px; margin-bottom:8px; }
+.pf-card-name { font-size:13px; font-weight:700; margin-bottom:2px; }
+.pf-card-desc { font-size:11px; color:var(--g500); }
+.pf-chk { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--g100); margin-top:8px; display:flex; align-items:center; justify-content:center; font-size:9px; color:transparent; }
+.pf-card.on .pf-chk { background:var(--black); border-color:var(--black); color:white; }
+
+/* Reports */
+.rpt-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:13px; margin-bottom:20px; }
+.met-card { background:var(--white); border:1px solid var(--g100); border-radius:var(--r); padding:16px; }
+.met-card.dk { background:var(--black); border-color:var(--black); }
+.met-nm { font-size:11px; color:var(--g500); margin-bottom:6px; font-weight:500; }
+.met-card.dk .met-nm { color:#777; }
+.met-val { font-family:Georgia,serif; font-size:24px; font-weight:700; color:var(--black); }
+.met-card.dk .met-val { color:var(--white); }
+.met-bdg { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; background:var(--g50); color:var(--g700); margin-top:5px; }
+.chart-area { background:var(--white); border:1px solid var(--g100); border-radius:var(--r); padding:18px; margin-bottom:18px; }
+.simple-chart { height:130px; display:flex; align-items:flex-end; gap:7px; padding-top:8px; }
+.chart-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.chart-bar-wrap { flex:1; width:100%; display:flex; align-items:flex-end; gap:2px; }
+.cbar { flex:1; border-radius:2px 2px 0 0; transition:height 1s cubic-bezier(0.34,1.56,0.64,1); }
+.cbar-p { background:var(--black); }
+.cbar-s { background:var(--g100); }
+.cxl { font-size:10px; color:var(--g500); }
+.cmp-tbl { width:100%; border-collapse:collapse; }
+.cmp-tbl th { text-align:left; font-size:11px; font-weight:700; color:var(--g500); padding:7px 11px; border-bottom:1.5px solid var(--g100); letter-spacing:.3px; }
+.cmp-tbl td { padding:10px 11px; font-size:12.5px; border-bottom:1px solid var(--g50); vertical-align:middle; }
+.cmp-tbl tr:hover td { background:var(--g50); }
+
+/* Toast */
+.toast { position:fixed; bottom:24px; right:24px; background:var(--black); color:var(--white); padding:12px 18px; border-radius:var(--r); font-size:13px; font-weight:500; opacity:0; transform:translateY(8px); transition:all .3s ease; pointer-events:none; z-index:100; }
+.toast.show { opacity:1; transform:none; }
+
+/* Progress bar (top banner during generation) */
+.gen-wrap { text-align:center; padding:36px 0; }
+.spinner { width:110px; height:110px; border-radius:50%; border:3px solid var(--g100); border-top-color:var(--black); animation:spin 1s linear infinite; margin:0 auto 24px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.gen-title { font-family:Georgia,serif; font-size:20px; font-weight:700; margin-bottom:10px; }
+.gen-sub { color:var(--g500); font-size:13px; margin-bottom:28px; }
+.gen-rows { max-width:340px; margin:0 auto 28px; text-align:left; display:flex; flex-direction:column; gap:9px; }
+.gen-row { display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--g400); }
+.gen-row.done { color:var(--black); font-weight:500; }
+.gpb { width:300px; height:3px; background:var(--g100); border-radius:2px; margin:0 auto; overflow:hidden; }
+.gpbf { height:100%; background:var(--black); width:0%; transition:width .4s ease; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="logo" href="#" onclick="return false">
+    <div class="logo-mark"></div>CREVO AI
+  </a>
+  <nav>
+    <button class="nav-btn active"  onclick="show('dashboard',this)">ダッシュボード</button>
+    <button class="nav-btn"        onclick="show('create',this)">制作</button>
+    <button class="nav-btn"        onclick="show('distribute',this)">配信</button>
+    <button class="nav-btn"        onclick="show('reports',this)">レポート</button>
+  </nav>
+  <div class="header-right">
+    <span class="plan-badge">AI スターター</span>
+    <div class="avatar">田</div>
+  </div>
+</header>
+
+<div class="main-wrapper">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sbl">制作</div>
+    <button class="sbi" onclick="goCreate(1)"><span class="sbi-ico">✦</span>AI動画生成</button>
+    <button class="sbi"><span class="sbi-ico">✂</span>素材編集</button>
+    <button class="sbi"><span class="sbi-ico">🗂</span>ライブラリ<span class="sbi-ct">12</span></button>
+    <div class="sbl">配信</div>
+    <button class="sbi"><span class="sbi-ico">📡</span>キャンペーン<span class="sbi-ct">3</span></button>
+    <button class="sbi"><span class="sbi-ico">⚙</span>配信設定</button>
+    <div class="sbl">分析</div>
+    <button class="sbi"><span class="sbi-ico">📊</span>レポート</button>
+    <button class="sbi"><span class="sbi-ico">💡</span>AI最適化提案<span class="sbi-ct">2</span></button>
+    <div class="sbl">設定</div>
+    <button class="sbi"><span class="sbi-ico">🏢</span>ブランド設定</button>
+    <button class="sbi"><span class="sbi-ico">💳</span>プラン管理</button>
+  </aside>
+
+  <main class="content">
+
+    <!-- ════════════════ DASHBOARD ════════════════ -->
+    <div class="screen active" id="screen-dashboard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div><h1 class="page-title">ダッシュボード</h1><p class="page-sub">2026年2月 — 広告パフォーマンス概要</p></div>
+        <button class="btn btn-p" onclick="goCreate(1)">＋ 新しい広告を制作</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card hl"><div class="stat-lbl">今月の配信数</div><div class="stat-num">47</div><div class="stat-chg">↑ 12本 先月比</div></div>
+        <div class="stat-card"><div class="stat-lbl">総インプレッション</div><div class="stat-num">128K</div><div class="stat-chg" style="color:#111;font-weight:600;">↑ 23%</div></div>
+        <div class="stat-card"><div class="stat-lbl">平均ROAS</div><div class="stat-num">3.8×</div><div class="stat-chg" style="color:#111;font-weight:600;">↑ +0.4</div></div>
+        <div class="stat-card"><div class="stat-lbl">総広告費用</div><div class="stat-num">¥284K</div><div class="stat-chg">今月累計</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="panel-title">最近の広告動画</div>
+          <div class="video-item"><div class="vthumb">🍜</div><div style="flex:1;min-width:0;"><div class="vname">夏の新メニュー告知 v2</div><div class="vmeta">Instagram · YouTube · 2日前</div></div><div style="text-align:right;"><div class="vroas">4.2×</div><div style="font-size:10.5px;color:var(--g500);">ROAS</div></div><div class="sdot sdot-on"></div></div>
+          <div class="video-item"><div class="vthumb">👔</div><div style="flex:1;min-width:0;"><div class="vname">秋コレクション Spring sale</div><div class="vmeta">Google · Meta · 5日前</div></div><div style="text-align:right;"><div class="vroas">3.1×</div><div style="font-size:10.5px;color:var(--g500);">ROAS</div></div><div class="sdot sdot-on"></div></div>
+          <div class="video-item"><div class="vthumb">💄</div><div style="flex:1;min-width:0;"><div class="vname">コスメ新製品 リリース告知</div><div class="vmeta">TikTok · Instagram · 2週間前</div></div><div style="text-align:right;"><div class="vroas">5.6×</div><div style="font-size:10.5px;color:var(--g500);">ROAS</div></div><div class="sdot sdot-on"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">プラットフォーム別 配信比率</div>
+          <div class="pf-bar">
+            <div class="pfr"><div class="pfn">YouTube</div><div class="pft"><div class="pff" style="width:38%"></div></div><div class="pfp">38%</div></div>
+            <div class="pfr"><div class="pfn">Instagram</div><div class="pft"><div class="pff" style="width:28%"></div></div><div class="pfp">28%</div></div>
+            <div class="pfr"><div class="pfn">LINE</div><div class="pft"><div class="pff" style="width:18%"></div></div><div class="pfp">18%</div></div>
+            <div class="pfr"><div class="pfn">Google</div><div class="pft"><div class="pff" style="width:11%"></div></div><div class="pfp">11%</div></div>
+            <div class="pfr"><div class="pfn">TikTok</div><div class="pft"><div class="pff" style="width:5%"></div></div><div class="pfp">5%</div></div>
+          </div>
+          <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--g100);">
+            <div class="panel-title">💡 AIからの最適化提案</div>
+            <div style="background:var(--g50);border-radius:var(--r);padding:11px;">
+              <div style="font-size:12.5px;font-weight:600;margin-bottom:3px;">TikTok への配分を増加</div>
+              <div style="font-size:11.5px;color:var(--g500);">TikTokのCPAが他媒体比42%低く、予算を10%移行するとROAS +0.6改善の見込みです。</div>
+              <div style="margin-top:8px;display:flex;gap:7px;"><button class="btn btn-p btn-sm" onclick="toast('AI配分を適用しました')">適用する</button><button class="btn btn-s btn-sm">スキップ</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ CREATE ════════════════ -->
+    <div class="screen" id="screen-create">
+      <!-- Step indicator -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <h1 class="page-title" style="margin-bottom:0;">AI広告制作</h1>
+        <span class="ai-badge">✦ AI生成</span>
+      </div>
+      <div class="wizard-steps" id="wsteps"></div>
+
+      <!-- STEP PANELS -->
+      <div id="cstep-1"><!-- ── Step1: ヒアリング ── -->
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:16px;">Step 1  クライアントヒアリング</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group"><label class="form-label">会社・ブランド名</label><input type="text" class="form-input" placeholder="例）田中ベーカリー" value="株式会社スタイルプラス"></div>
+          <div class="form-group"><label class="form-label">業種</label>
+            <select class="form-select"><option>アパレル・ファッション</option><option>飲食・フード</option><option>美容・コスメ</option><option>不動産</option><option>サービス業</option></select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1;"><label class="form-label">広告の目的 <small>複数可</small></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;">
+              <button class="sel-card on" style="padding:7px 14px;font-size:12px;" onclick="toggle(this)">ブランド認知</button>
+              <button class="sel-card on" style="padding:7px 14px;font-size:12px;" onclick="toggle(this)">商品購買</button>
+              <button class="sel-card" style="padding:7px 14px;font-size:12px;" onclick="toggle(this)">来店促進</button>
+              <button class="sel-card" style="padding:7px 14px;font-size:12px;" onclick="toggle(this)">問い合わせ獲得</button>
+              <button class="sel-card" style="padding:7px 14px;font-size:12px;" onclick="toggle(this)">アプリDL</button>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">ターゲット年代</label>
+            <select class="form-select"><option>10代</option><option>20代</option><option selected>30〜40代</option><option>50代以上</option><option>全年代</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">ターゲット性別</label>
+            <select class="form-select"><option>指定なし</option><option selected>女性</option><option>男性</option></select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1;"><label class="form-label">月次広告予算（目安）</label>
+            <select class="form-select"><option>〜10万円</option><option selected>10〜30万円</option><option>30〜100万円</option><option>100万円以上</option></select>
+          </div>
+        </div>
+        <div class="action-bar"><button class="btn btn-g">下書き保存</button><button class="btn btn-p btn-lg" onclick="goStep(2)">次へ →</button></div>
+      </div>
+
+      <div id="cstep-2" style="display:none;"><!-- ── Step2: キーメッセージ ── -->
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:6px;">Step 2  キーメッセージ開発</div>
+        <p style="font-size:12.5px;color:var(--g500);margin-bottom:16px;">入力情報をもとにAIがキャッチコピーを提案しました。選択・編集してください。</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+          <div class="sel-card on" style="padding:14px 16px;" onclick="selectMsg(this)">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">「大人の余裕を、毎日のスタイルに。」</div>
+            <div style="font-size:11.5px;color:var(--g500);">上質感 × 日常使いのバランスを強調。30〜40代女性に響くトーン。</div>
+          </div>
+          <div class="sel-card" style="padding:14px 16px;" onclick="selectMsg(this)">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">「選ぶのではなく、自分に合わせる。」</div>
+            <div style="font-size:11.5px;color:var(--g500);">個性・自己表現を訴求。ブランドロイヤリティを高めるメッセージ。</div>
+          </div>
+          <div class="sel-card" style="padding:14px 16px;" onclick="selectMsg(this)">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">「今秋、新しい自分に出会う。」</div>
+            <div style="font-size:11.5px;color:var(--g500);">季節感と変化・刷新を組み合わせた感情訴求型コピー。</div>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">または自由入力 <small>（上記を参考に独自のコピーを入力）</small></label>
+          <input type="text" class="form-input" placeholder="キャッチコピーを入力してください" value="大人の余裕を、毎日のスタイルに。">
+        </div>
+        <div style="margin-top:16px;" class="form-group">
+          <label class="form-label">サブコピー <small>（任意）</small></label>
+          <input type="text" class="form-input" placeholder="例）今秋、スタイルプラスから新コレクション登場。" value="今秋、スタイルプラスから待望の新コレクション登場。">
+        </div>
+        <div class="action-bar"><button class="btn btn-g" onclick="goStep(1)">← 戻る</button><button class="btn btn-p btn-lg" onclick="goStep(3)">次へ →</button></div>
+      </div>
+
+      <div id="cstep-3" style="display:none;"><!-- ── Step3: 動画/静止画・フォーマット ── -->
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:16px;">Step 3  動画 / 静止画の選択</div>
+        <div style="display:flex;gap:12px;margin-bottom:22px;">
+          <div class="sel-card on" style="flex:1;padding:18px;text-align:center;" onclick="selectMediaType(this,'video')">
+            <div style="font-size:28px;margin-bottom:8px;">🎬</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:3px;">動画広告</div>
+            <div style="font-size:11px;color:var(--g500);">6秒〜60秒のAI生成動画。YouTube・TikTok・Instagramリール等に最適。</div>
+          </div>
+          <div class="sel-card" style="flex:1;padding:18px;text-align:center;" onclick="selectMediaType(this,'image')">
+            <div style="font-size:28px;margin-bottom:8px;">🖼</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:3px;">静止画広告</div>
+            <div style="font-size:11px;color:var(--g500);">バナー・Instagram投稿・Google ディスプレイ広告に最適。</div>
+          </div>
+        </div>
+        <label class="form-label" style="margin-bottom:10px;">アスペクト比 / フォーマット</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+          <div class="sel-card on" style="padding:14px;text-align:center;" onclick="selectOne(this,'.fmt-card')">
+            <div style="width:56px;height:32px;background:var(--g100);border-radius:3px;margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;">横型 16:9</div><div style="font-size:10.5px;color:var(--g500);">YouTube · Google</div>
+          </div>
+          <div class="sel-card fmt-card" style="padding:14px;text-align:center;" onclick="selectOne(this,'.fmt-card')">
+            <div style="width:26px;height:46px;background:var(--g100);border-radius:3px;margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;">縦型 9:16</div><div style="font-size:10.5px;color:var(--g500);">TikTok · Reels</div>
+          </div>
+          <div class="sel-card fmt-card" style="padding:14px;text-align:center;" onclick="selectOne(this,'.fmt-card')">
+            <div style="width:40px;height:40px;background:var(--g100);border-radius:3px;margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;">正方形 1:1</div><div style="font-size:10.5px;color:var(--g500);">Instagram · Meta</div>
+          </div>
+        </div>
+        <label class="form-label" style="margin-bottom:10px;">動画の長さ</label>
+        <div style="display:flex;gap:8px;">
+          <button class="sel-card" style="padding:8px 18px;font-size:12.5px;" onclick="selectOne(this,'.dur-btn')">6秒</button>
+          <button class="sel-card on dur-btn" style="padding:8px 18px;font-size:12.5px;" onclick="selectOne(this,'.dur-btn')">15秒</button>
+          <button class="sel-card dur-btn" style="padding:8px 18px;font-size:12.5px;" onclick="selectOne(this,'.dur-btn')">30秒</button>
+          <button class="sel-card dur-btn" style="padding:8px 18px;font-size:12.5px;" onclick="selectOne(this,'.dur-btn')">60秒</button>
+        </div>
+        <div class="action-bar"><button class="btn btn-g" onclick="goStep(2)">← 戻る</button><button class="btn btn-p btn-lg" onclick="goStep(4)">次へ →</button></div>
+      </div>
+
+      <div id="cstep-4" style="display:none;"><!-- ── Step4: タレント/テンプレート ── -->
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:6px;">Step 4  タレントAI / テンプレート選択</div>
+        <p style="font-size:12.5px;color:var(--g500);margin-bottom:16px;">タレントのAI肖像を使用した広告動画、またはフリーテンプレートからお選びください。</p>
+
+        <div style="display:flex;gap:8px;margin-bottom:18px;" id="talent-tabs">
+          <button class="sel-card on" style="padding:7px 18px;font-size:12.5px;" onclick="switchTalentTab(this,'tab-talent')">タレントAIプラン</button>
+          <button class="sel-card" style="padding:7px 18px;font-size:12.5px;" onclick="switchTalentTab(this,'tab-tmpl')">フリーテンプレート</button>
+        </div>
+
+        <div id="tab-talent">
+          <div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--r);padding:11px 14px;margin-bottom:14px;font-size:12px;color:#795548;">
+            ⭐ タレントAIプランは提携タレント事務所の許諾を取得した肖像AIを使用します。使用ごとに事務所へライセンス料が発生します（料金はプレビュー後に表示）。
+          </div>
+          <div class="talent-grid">
+            <div class="talent-card on" onclick="selectTalent(this)">
+              <div class="talent-face" style="background:#F5F0EC;">👩<div class="talent-badge" style="background:#111;color:#fff;">人気</div></div>
+              <div class="talent-info"><div class="talent-name">Yuki T.</div><div class="talent-sub">20代女性 / ファッション系</div></div>
+            </div>
+            <div class="talent-card" onclick="selectTalent(this)">
+              <div class="talent-face" style="background:#EEF2F5;">👨<div class="talent-badge" style="background:#666;color:#fff;">NEW</div></div>
+              <div class="talent-info"><div class="talent-name">Kenta M.</div><div class="talent-sub">30代男性 / ビジネス系</div></div>
+            </div>
+            <div class="talent-card" onclick="selectTalent(this)">
+              <div class="talent-face" style="background:#F0F5EE;">👩‍🦰</div>
+              <div class="talent-info"><div class="talent-name">Haruna S.</div><div class="talent-sub">30代女性 / ライフスタイル</div></div>
+            </div>
+            <div class="talent-card" onclick="selectTalent(this)">
+              <div class="talent-face" style="background:#F5F0F5;">🧑<div class="talent-badge" style="background:#7C3AED;color:#fff;">Premium</div></div>
+              <div class="talent-info"><div class="talent-name">Riku N.</div><div class="talent-sub">20代 / ストリート系</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-tmpl" style="display:none;">
+          <div class="tmpl-grid">
+            <div class="tmpl-card on" onclick="selectOne(this,'.tmpl-card')">
+              <div class="tmpl-thumb" style="background:#F5F5F5;">✨</div>
+              <div class="tmpl-info"><div class="tmpl-name">プレミアム</div><div class="tmpl-style">洗練 · 高級感</div></div>
+            </div>
+            <div class="tmpl-card" onclick="selectOne(this,'.tmpl-card')">
+              <div class="tmpl-thumb" style="background:#FFF8F0;">🌸</div>
+              <div class="tmpl-info"><div class="tmpl-name">ポップ</div><div class="tmpl-style">明るい · 親しみやすい</div></div>
+            </div>
+            <div class="tmpl-card" onclick="selectOne(this,'.tmpl-card')">
+              <div class="tmpl-thumb" style="background:#F0F5FF;">💼</div>
+              <div class="tmpl-info"><div class="tmpl-name">ビジネス</div><div class="tmpl-style">信頼感 · 誠実</div></div>
+            </div>
+            <div class="tmpl-card" onclick="selectOne(this,'.tmpl-card')">
+              <div class="tmpl-thumb" style="background:#F5F5F5;">🖤</div>
+              <div class="tmpl-info"><div class="tmpl-name">モノトーン</div><div class="tmpl-style">ミニマル · クール</div></div>
+            </div>
+            <div class="tmpl-card" onclick="selectOne(this,'.tmpl-card')">
+              <div class="tmpl-thumb" style="background:#F5F0FF;">⚡</div>
+              <div class="tmpl-info"><div class="tmpl-name">エネルギー</div><div class="tmpl-style">躍動感 · インパクト</div></div>
+            </div>
+            <div class="tmpl-card" onclick="selectOne(this,'.tmpl-card')">
+              <div class="tmpl-thumb" style="background:#F0FFF5;">🌿</div>
+              <div class="tmpl-info"><div class="tmpl-name">ナチュラル</div><div class="tmpl-style">温かみ · エコ</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="action-bar"><button class="btn btn-g" onclick="goStep(3)">← 戻る</button><button class="btn btn-p btn-lg" onclick="goStep(5)">次へ →</button></div>
+      </div>
+
+      <div id="cstep-5" style="display:none;"><!-- ── Step5: 音楽・ナレーション ── -->
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:6px;">Step 5  BGM / ナレーション</div>
+        <p style="font-size:12.5px;color:var(--g500);margin-bottom:18px;">フリーライセンスの音楽とAIナレーターをお選びください。</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;">
+          <div>
+            <label class="form-label" style="margin-bottom:10px;">BGM <small>（すべてフリーライセンス）</small></label>
+            <div class="music-list">
+              <div class="music-row on" onclick="selectMusic(this)">
+                <div class="music-play">▶</div>
+                <div style="flex:1;"><div class="music-name">Elegant Flow</div><div class="music-meta">ピアノ · アンビエント</div></div>
+                <div class="music-duration">0:45</div>
+              </div>
+              <div class="music-row" onclick="selectMusic(this)">
+                <div class="music-play">▶</div>
+                <div style="flex:1;"><div class="music-name">City Lights</div><div class="music-meta">シンセ · モダン</div></div>
+                <div class="music-duration">1:02</div>
+              </div>
+              <div class="music-row" onclick="selectMusic(this)">
+                <div class="music-play">▶</div>
+                <div style="flex:1;"><div class="music-name">Morning Calm</div><div class="music-meta">アコギ · ナチュラル</div></div>
+                <div class="music-duration">0:58</div>
+              </div>
+              <div class="music-row" onclick="selectMusic(this)">
+                <div class="music-play">▶</div>
+                <div style="flex:1;"><div class="music-name">Urban Drive</div><div class="music-meta">エレクトロ · エナジー</div></div>
+                <div class="music-duration">0:50</div>
+              </div>
+              <div class="music-row" onclick="selectMusic(this)">
+                <div class="music-play">▶</div>
+                <div style="flex:1;"><div class="music-name">BGMなし</div><div class="music-meta">サイレント</div></div>
+                <div class="music-duration">—</div>
+              </div>
+            </div>
+            <div style="margin-top:12px;">
+              <label class="form-label" style="margin-bottom:4px;">音量</label>
+              <input type="range" class="range-slider" min="0" max="100" value="65">
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label" style="margin-bottom:10px;">AIナレーション <small>（声優AIモデル）</small></label>
+            <div class="narr-grid">
+              <div class="narr-card on" onclick="selectNarr(this)">
+                <div class="narr-avatar">👩</div>
+                <div class="narr-name">Yui（ゆい）</div>
+                <div class="narr-meta">女性 · 明るく親しみやすい</div>
+                <div class="narr-sample"><button class="narr-play" onclick="event.stopPropagation();toast('サンプル再生中...')">▶ サンプル</button></div>
+              </div>
+              <div class="narr-card" onclick="selectNarr(this)">
+                <div class="narr-avatar">👩‍💼</div>
+                <div class="narr-name">Akemi（あけみ）</div>
+                <div class="narr-meta">女性 · 落ち着き・高級感</div>
+                <div class="narr-sample"><button class="narr-play" onclick="event.stopPropagation();toast('サンプル再生中...')">▶ サンプル</button></div>
+              </div>
+              <div class="narr-card" onclick="selectNarr(this)">
+                <div class="narr-avatar">👨</div>
+                <div class="narr-name">Ken（けん）</div>
+                <div class="narr-meta">男性 · 信頼感・力強い</div>
+                <div class="narr-sample"><button class="narr-play" onclick="event.stopPropagation();toast('サンプル再生中...')">▶ サンプル</button></div>
+              </div>
+              <div class="narr-card" onclick="selectNarr(this)">
+                <div class="narr-avatar">🔇</div>
+                <div class="narr-name">ナレなし</div>
+                <div class="narr-meta">テロップのみで訴求</div>
+                <div class="narr-sample"></div>
+              </div>
+            </div>
+            <div style="margin-top:14px;" class="form-group">
+              <label class="form-label">ナレーション原稿 <small>（自動生成 / 編集可）</small></label>
+              <textarea class="form-textarea" rows="4">今秋、スタイルプラスから待望の新コレクションが登場。大人カジュアルをテーマに、上質な素材感と機能性を両立したアイテムが揃います。今なら期間限定特典もご用意。ぜひご覧ください。</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="action-bar"><button class="btn btn-g" onclick="goStep(4)">← 戻る</button><button class="btn btn-p btn-lg" onclick="startGen()">✦ AIで動画を生成する</button></div>
+      </div>
+
+      <!-- STEP 6: Generating -->
+      <div id="cstep-gen" style="display:none;">
+        <div class="gen-wrap">
+          <div class="spinner"></div>
+          <div class="gen-title">AIが動画を生成しています...</div>
+          <div class="gen-sub">30秒〜1分程度かかります。そのままお待ちください。</div>
+          <div class="gen-rows">
+            <div class="gen-row done" id="gr1">✓&nbsp; テキスト・ヒアリング内容を解析</div>
+            <div class="gen-row" id="gr2">⋯&nbsp; シーン構成を自動生成中...</div>
+            <div class="gen-row" id="gr3">⋯&nbsp; タレントAI映像をレンダリング中...</div>
+            <div class="gen-row" id="gr4">⋯&nbsp; BGM・ナレーションを合成中...</div>
+            <div class="gen-row" id="gr5">⋯&nbsp; テロップ・キャプションを配置中...</div>
+          </div>
+          <div class="gpb"><div class="gpbf" id="gpbf"></div></div>
+        </div>
+      </div>
+
+      <!-- STEP 7: Preview & Edit -->
+      <div id="cstep-7" style="display:none;">
+        <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:14px;">Step 6  プレビュー &amp; 編集</div>
+        <div class="preview-wrap">
+          <div>
+            <div class="vid-area">
+              <div style="text-align:center;">
+                <div class="play-ring"></div>
+                <div style="color:rgba(255,255,255,0.5);font-size:12px;">生成された広告動画（プレビュー）</div>
+              </div>
+              <div class="vid-caption-bar">
+                <div class="caption-pill" id="cap-text">大人の余裕を、毎日のスタイルに。</div>
+              </div>
+            </div>
+            <div class="scene-strip">
+              <div class="scene-thumb on"></div>
+              <div class="scene-thumb"></div>
+              <div class="scene-thumb"></div>
+              <div class="scene-thumb"></div>
+              <div class="scene-thumb"></div>
+            </div>
+            <div style="font-size:11px;color:var(--g500);margin-top:5px;">シーンサムネイル（クリックで編集）</div>
+          </div>
+          <div class="edit-pane">
+            <div style="font-size:12.5px;font-weight:700;padding-bottom:10px;border-bottom:1px solid var(--g100);">編集パネル</div>
+            <div class="edit-block">
+              <div class="edit-blk-hdr" onclick="toggleBlk(this)">テロップ設定 <span>▾</span></div>
+              <div class="edit-blk-body">
+                <div class="edit-row"><div class="edit-lbl">テキスト</div><input class="form-input" type="text" value="大人の余裕を、毎日のスタイルに。" oninput="document.getElementById('cap-text').textContent=this.value||' '" style="font-size:12.5px;padding:6px 9px;"></div>
+                <div class="edit-row"><div class="edit-lbl">文字色</div><div class="swatch-row"><div class="swatch on" style="background:#fff;" onclick="swatchSel(this)"></div><div class="swatch" style="background:#111;" onclick="swatchSel(this)"></div><div class="swatch" style="background:#FFD700;" onclick="swatchSel(this)"></div><div class="swatch" style="background:#FF6B6B;" onclick="swatchSel(this)"></div></div></div>
+              </div>
+            </div>
+            <div class="edit-block">
+              <div class="edit-blk-hdr" onclick="toggleBlk(this)">BGM <span>▾</span></div>
+              <div class="edit-blk-body">
+                <div class="tr-row"><span class="tr-lbl">Elegant Flow</span><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+                <div style="margin-top:8px;"><input type="range" class="range-slider" min="0" max="100" value="65"></div>
+              </div>
+            </div>
+            <div class="edit-block">
+              <div class="edit-blk-hdr" onclick="toggleBlk(this)">ナレーション <span>▾</span></div>
+              <div class="edit-blk-body">
+                <div class="tr-row"><span class="tr-lbl">Yui（ゆい）</span><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+                <div style="margin-top:8px;"><input type="range" class="range-slider" min="0" max="100" value="70"></div>
+              </div>
+            </div>
+            <div class="edit-block">
+              <div class="edit-blk-hdr" onclick="toggleBlk(this)">ロゴ &amp; CTA <span>▾</span></div>
+              <div class="edit-blk-body">
+                <div class="tr-row"><span class="tr-lbl">ロゴを表示</span><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+                <div class="tr-row"><span class="tr-lbl">CTAボタン</span><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px;margin-top:auto;">
+              <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="show('distribute',document.querySelector('nav .nav-btn:nth-child(3)'))">配信設定へ →</button>
+              <button class="btn btn-s" style="width:100%;justify-content:center;" onclick="toast('動画をダウンロードしました')">ダウンロード</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ DISTRIBUTE ════════════════ -->
+    <div class="screen" id="screen-distribute">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div><h1 class="page-title">配信設定</h1><p class="page-sub">配信先プラットフォームと予算を設定してください</p></div>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--g100);border-radius:var(--r);padding:13px 17px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">
+        <div style="width:50px;height:32px;background:var(--g100);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:16px;">👔</div>
+        <div><div style="font-size:13px;font-weight:700;">秋の新商品 プロモーション</div><div style="font-size:11.5px;color:var(--g500);">横型 16:9 · Yuki T. · Elegant Flow · 30秒</div></div>
+        <button class="btn btn-s btn-sm" style="margin-left:auto;" onclick="goCreate(7)">動画を変更</button>
+      </div>
+      <label class="form-label" style="margin-bottom:12px;">配信プラットフォームを選択</label>
+      <div class="pf-grid">
+        <div class="pf-card on" onclick="this.classList.toggle('on')"><div class="pf-ico">▶</div><div class="pf-card-name">YouTube</div><div class="pf-card-desc">インストリーム / バンパー広告</div><div class="pf-chk">✓</div></div>
+        <div class="pf-card on" onclick="this.classList.toggle('on')"><div class="pf-ico">📷</div><div class="pf-card-name">Instagram / Meta</div><div class="pf-card-desc">フィード / リール / ストーリー</div><div class="pf-chk">✓</div></div>
+        <div class="pf-card" onclick="this.classList.toggle('on')"><div class="pf-ico">💬</div><div class="pf-card-name">LINE</div><div class="pf-card-desc">LINEタイムライン広告</div><div class="pf-chk">✓</div></div>
+        <div class="pf-card" onclick="this.classList.toggle('on')"><div class="pf-ico">🔍</div><div class="pf-card-name">Google</div><div class="pf-card-desc">ディスカバリー / P-Max</div><div class="pf-chk">✓</div></div>
+        <div class="pf-card" onclick="this.classList.toggle('on')"><div class="pf-ico">🎵</div><div class="pf-card-name">TikTok</div><div class="pf-card-desc">インフィード動画広告</div><div class="pf-chk">✓</div></div>
+        <div class="pf-card" onclick="this.classList.toggle('on')"><div class="pf-ico">𝕏</div><div class="pf-card-name">X (Twitter)</div><div class="pf-card-desc">プロモーテッド動画</div><div class="pf-chk">✓</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title">予算設定</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+          <div style="font-size:12px;color:var(--g500);width:80px;">日次予算</div>
+          <input type="text" class="form-input" value="5,000" style="width:110px;">
+          <span style="font-size:13px;color:var(--g500);">円 / 日</span>
+        </div>
+        <input type="range" class="range-slider" min="1000" max="50000" value="5000" step="500" style="margin-bottom:14px;">
+        <div style="background:var(--g50);border-radius:var(--r);padding:11px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:3px;">✦ AI予算配分の提案</div>
+          <div style="font-size:11.5px;color:var(--g500);">YouTube 45% / Instagram 35% / LINE 20% に自動配分することを推奨します。</div>
+          <div style="margin-top:7px;"><button class="btn btn-p btn-sm" onclick="toast('AI配分を適用しました')">AIの提案を適用</button></div>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-g">下書き保存</button>
+        <button class="btn btn-s">プレビュー確認</button>
+        <button class="btn btn-p btn-lg" onclick="toast('広告を配信開始しました！');show('reports',document.querySelector('nav .nav-btn:nth-child(4)'))">🚀 配信を開始する</button>
+      </div>
+    </div>
+
+    <!-- ════════════════ REPORTS ════════════════ -->
+    <div class="screen" id="screen-reports">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div><h1 class="page-title">パフォーマンスレポート</h1><p class="page-sub">過去30日間 — 全キャンペーン</p></div>
+        <div style="display:flex;gap:8px;">
+          <select class="form-select" style="width:auto;padding:7px 12px;font-size:12.5px;"><option>過去30日</option><option>過去7日</option><option>今月</option></select>
+          <button class="btn btn-s btn-sm" onclick="toast('レポートをエクスポートしました')">エクスポート</button>
+        </div>
+      </div>
+      <div class="rpt-grid">
+        <div class="met-card dk"><div class="met-nm">平均 ROAS</div><div class="met-val">3.8×</div><div><span class="met-bdg" style="background:#222;color:#888;">↑ +0.4 先月比</span></div></div>
+        <div class="met-card"><div class="met-nm">総インプレッション</div><div class="met-val">128K</div><div><span class="met-bdg">↑ +23%</span></div></div>
+        <div class="met-card"><div class="met-nm">クリック率 (CTR)</div><div class="met-val">4.2%</div><div><span class="met-bdg">業界平均 1.8%</span></div></div>
+        <div class="met-card"><div class="met-nm">コンバージョン数</div><div class="met-val">312</div><div><span class="met-bdg">↑ +18%</span></div></div>
+        <div class="met-card"><div class="met-nm">CPA（平均獲得単価）</div><div class="met-val">¥912</div><div><span class="met-bdg">↓ -¥134</span></div></div>
+        <div class="met-card"><div class="met-nm">総広告費</div><div class="met-val">¥284K</div><div><span class="met-bdg">今月累計</span></div></div>
+      </div>
+      <div class="chart-area">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <span style="font-size:13px;font-weight:700;">インプレッション / クリック 推移</span>
+          <div style="display:flex;gap:14px;">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--g500);"><div style="width:8px;height:8px;background:#111;border-radius:50%;"></div>インプレッション</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--g500);"><div style="width:8px;height:8px;background:#ddd;border-radius:50%;"></div>クリック</div>
+          </div>
+        </div>
+        <div class="simple-chart" id="bar-chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">キャンペーン一覧</div>
+        <table class="cmp-tbl">
+          <thead><tr><th>キャンペーン名</th><th>媒体</th><th>インプレ</th><th>CTR</th><th>ROAS</th><th>状態</th></tr></thead>
+          <tbody>
+            <tr><td><strong>夏の新メニュー告知 v2</strong></td><td style="color:var(--g500);font-size:11.5px;">Instagram · YouTube</td><td>42,500</td><td>5.1%</td><td><strong>4.2×</strong></td><td><span class="tag tag-active">配信中</span></td></tr>
+            <tr><td><strong>コスメ新製品 リリース告知</strong></td><td style="color:var(--g500);font-size:11.5px;">TikTok · Instagram</td><td>38,200</td><td>6.3%</td><td><strong>5.6×</strong></td><td><span class="tag tag-active">配信中</span></td></tr>
+            <tr><td><strong>秋コレクション Spring sale</strong></td><td style="color:var(--g500);font-size:11.5px;">Google · Meta</td><td>28,800</td><td>3.8%</td><td><strong>3.1×</strong></td><td><span class="tag tag-active">配信中</span></td></tr>
+            <tr><td><strong>秋の新商品 プロモーション</strong></td><td style="color:var(--g500);font-size:11.5px;">—</td><td>—</td><td>—</td><td>—</td><td><span class="tag tag-draft">下書き</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+<div class="toast" id="toast-el"></div>
+
+<script>
+// ─── STEP LABELS ───
+const STEPS = [
+  'ヒアリング','キーメッセージ','素材選択','タレント選択','BGM・ナレーション','プレビュー&編集'
+];
+let currentStep = 1;
+
+function buildSteps(active) {
+  const c = document.getElementById('wsteps');
+  c.innerHTML = '';
+  STEPS.forEach((lbl, i) => {
+    const n = i + 1;
+    const div = document.createElement('div');
+    div.className = 'ws' + (n === active ? ' active' : n < active ? ' done' : '');
+    const circle = document.createElement('div');
+    circle.className = 'wsc';
+    circle.textContent = n < active ? '✓' : n;
+    div.appendChild(circle);
+    const span = document.createElement('span');
+    span.textContent = lbl;
+    div.appendChild(span);
+    c.appendChild(div);
+    if (i < STEPS.length - 1) {
+      const line = document.createElement('div');
+      line.className = 'wsl' + (n < active ? ' done' : '');
+      c.appendChild(line);
+    }
+  });
+}
+
+// ─── NAVIGATION ───
+function show(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'reports') buildChart();
+}
+
+function goCreate(step) {
+  show('create', document.querySelector('nav .nav-btn:nth-child(2)'));
+  goStep(step);
+}
+
+function goStep(n) {
+  currentStep = n;
+  const ids = ['cstep-1','cstep-2','cstep-3','cstep-4','cstep-5','cstep-gen','cstep-7'];
+  ids.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  // Which panel to show
+  const map = {1:'cstep-1',2:'cstep-2',3:'cstep-3',4:'cstep-4',5:'cstep-5',7:'cstep-7'};
+  const panel = map[n];
+  if (panel) { document.getElementById(panel).style.display = ''; buildSteps(n); }
+}
+
+function startGen() {
+  ['cstep-1','cstep-2','cstep-3','cstep-4','cstep-5'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('cstep-gen').style.display = '';
+  buildSteps(6);
+  const fill = document.getElementById('gpbf');
+  const rows = [
+    {id:'gr1', delay:0,   pct:15, text:'✓&nbsp; テキスト・ヒアリング内容を解析'},
+    {id:'gr2', delay:800, pct:35, text:'✓&nbsp; シーン構成を自動生成'},
+    {id:'gr3', delay:1800,pct:60, text:'✓&nbsp; タレントAI映像をレンダリング'},
+    {id:'gr4', delay:3000,pct:80, text:'✓&nbsp; BGM・ナレーションを合成'},
+    {id:'gr5', delay:4000,pct:96, text:'✓&nbsp; テロップ・キャプションを配置'},
+  ];
+  fill.style.width = '5%';
+  rows.forEach(r => {
+    setTimeout(() => {
+      fill.style.width = r.pct + '%';
+      const el = document.getElementById(r.id);
+      el.innerHTML = r.text;
+      el.classList.add('done');
+    }, r.delay);
+  });
+  setTimeout(() => {
+    fill.style.width = '100%';
+    setTimeout(() => { goStep(7); }, 500);
+  }, 5200);
+}
+
+// ─── SELECTION HELPERS ───
+function toggle(el) { el.classList.toggle('on'); }
+function selectOne(el, selector) {
+  const parent = el.closest('.content') || document.body;
+  const container = el.parentElement;
+  container.querySelectorAll(selector || '.sel-card').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+}
+function selectMsg(el) { el.closest('div').querySelectorAll('.sel-card').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function selectMediaType(el) { el.parentElement.querySelectorAll('.sel-card').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function selectTalent(el) { el.closest('.talent-grid').querySelectorAll('.talent-card').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function switchTalentTab(btn, tabId) {
+  document.getElementById('talent-tabs').querySelectorAll('.sel-card').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  ['tab-talent','tab-tmpl'].forEach(id => document.getElementById(id).style.display = id===tabId?'':'none');
+}
+function selectMusic(el) { el.closest('.music-list').querySelectorAll('.music-row').forEach(r=>r.classList.remove('on')); el.classList.add('on'); }
+function selectNarr(el) { el.closest('.narr-grid').querySelectorAll('.narr-card').forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function toggleBlk(hdr) {
+  const body = hdr.nextElementSibling;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  hdr.querySelector('span').textContent = open ? '▸' : '▾';
+}
+function swatchSel(el) { el.closest('.swatch-row').querySelectorAll('.swatch').forEach(s=>s.classList.remove('on')); el.classList.add('on'); }
+
+// ─── CHART ───
+const chartData = [
+  {l:'2/1',i:62,c:30},{l:'2/5',i:78,c:42},{l:'2/10',i:55,c:28},
+  {l:'2/15',i:90,c:55},{l:'2/20',i:100,c:64},{l:'2/25',i:85,c:50},{l:'2/28',i:95,c:60}
+];
+function buildChart() {
+  const el = document.getElementById('bar-chart');
+  if (el.children.length) return;
+  chartData.forEach(d => {
+    const col = document.createElement('div'); col.className = 'chart-col';
+    col.innerHTML = `<div class="chart-bar-wrap"><div class="cbar cbar-p" style="height:0%"></div><div class="cbar cbar-s" style="height:0%"></div></div><div class="cxl">${d.l}</div>`;
+    el.appendChild(col);
+    setTimeout(() => { col.querySelector('.cbar-p').style.height=d.i+'%'; col.querySelector('.cbar-s').style.height=d.c+'%'; }, 100);
+  });
+}
+
+// ─── TOAST ───
+function toast(msg) {
+  const t = document.getElementById('toast-el');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── INIT ───
+window.onload = () => {
+  goStep(1);
+  setTimeout(() => { document.querySelectorAll('.pff').forEach(el => { const w=el.style.width; el.style.width='0%'; setTimeout(()=>{ el.style.transition='width 1s ease'; el.style.width=w; },100); }); }, 200);
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ad Engine POC</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Adaptive Delivery Engine</p>
+          <h1>Cross-post campaigns and rebalance budget across X, TikTok, and Instagram.</h1>
+          <p class="lede">
+            This proof of concept simulates automated ad delivery and continuously shifts budget
+            toward the best-performing channel mix.
+          </p>
+        </div>
+        <button id="rebalanceButton" class="primary">Run rebalance now</button>
+      </section>
+
+      <section class="summary">
+        <article class="metric-card">
+          <span>Total Budget</span>
+          <strong id="totalBudget">-</strong>
+        </article>
+        <article class="metric-card">
+          <span>Remaining</span>
+          <strong id="remainingBudget">-</strong>
+        </article>
+        <article class="metric-card">
+          <span>Last Rebalance</span>
+          <strong id="lastRebalance">-</strong>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Live Allocation</p>
+            <h2 id="campaignName">Loading campaign...</h2>
+          </div>
+          <p id="campaignMeta" class="campaign-meta"></p>
+        </div>
+        <div id="allocationBars" class="allocation-bars"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Platform Performance</p>
+            <h2>Current channel mix</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Platform</th>
+                <th>Allocation</th>
+                <th>Spend</th>
+                <th>CTR</th>
+                <th>ROAS</th>
+                <th>Conversions</th>
+                <th>Published Ads</th>
+              </tr>
+            </thead>
+            <tbody id="performanceTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
