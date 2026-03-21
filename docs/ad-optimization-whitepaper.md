@@ -17,7 +17,12 @@ The core design goal is to maximize business outcome under uncertainty. In pract
 - maintain minimum spend on each platform to prevent premature starvation
 - keep a human approval boundary around high-risk actions
 
-For the POC, we recommend a constrained multi-armed bandit approach combined with portfolio-style rebalancing ideas borrowed from cross-token exchange systems. This gives us a strong path from a simple heuristic implementation to a more robust adaptive optimizer without changing the system architecture.
+For the POC, we recommend a constrained multi-armed bandit approach combined with portfolio-style rebalancing ideas borrowed from cross-token exchange systems. More specifically, the system should separate:
+
+- target weight calculation
+- delta-based execution toward those targets
+
+This gives us a strong path from a simple heuristic implementation to a more robust adaptive optimizer without changing the system architecture.
 
 ## 2. Problem Statement
 
@@ -57,6 +62,8 @@ Concept mapping:
 - liquidity depth maps to audience capacity and auction absorption
 - transaction cost maps to platform learning-reset cost and creative fatigue
 - rebalance threshold maps to the minimum drift that justifies moving budget
+- soft partitions map to platform target allocation bands
+- route deficit maps to under-allocation relative to target share
 
 This borrowing is intentional, not accidental. The optimizer in `ad-engine` should behave less like a raw score sorter and more like a constrained portfolio allocator.
 
@@ -66,6 +73,11 @@ Important difference:
 - ad systems have delayed attribution, noisier reward signals, and policy constraints
 
 So we borrow the rebalancing structure, but we do not assume market-like immediacy.
+
+Reference:
+
+- Stargate V1 docs: [Stargate V1 / Delta Algorithm](https://docs.stargate.finance/primitives/routes/stargateV1)
+- Stargate whitepaper PDF: [Delta: Solving The Bridging Trilemma](https://github.com/stargate-protocol/stargate/blob/main/whitepaper/Delta-Solving.The.Bridging-Trilemma.pdf)
 
 ## 4. Optimization Objectives
 
@@ -101,7 +113,7 @@ Raw platform metrics are not directly comparable. We should compare derived norm
 - spend velocity
 - impression velocity
 
-### 5.2 Separate Signal From Policy
+### 5.2 Separate Signal From Execution Policy
 
 The optimizer should produce an unconstrained platform score first. Then policy constraints should shape the final allocation:
 
@@ -110,6 +122,8 @@ The optimizer should produce an unconstrained platform score first. Then policy 
 - max step-up per cycle
 - max step-down per cycle
 - pacing constraints
+
+In implementation terms, the system should first decide the desired target weight, and only then run an execution layer that moves live allocations toward those targets.
 
 ### 5.3 Reward Confidence, Not Just Performance
 
@@ -137,13 +151,14 @@ The system should require approval for:
 
 ## 6.1 Overview
 
-We recommend a 5-stage decision pipeline:
+We recommend a 6-stage decision pipeline:
 
 1. Ingest and normalize per-platform metrics
 2. Estimate each platform's expected utility and confidence
 3. Convert utility into target allocation using constrained bandit logic
-4. Apply portfolio-style rebalance threshold and reallocation friction
-5. Apply pacing and safety rules, then publish the new budget split
+4. Compute per-platform delta between target and current allocation
+5. Execute Delta-inspired bounded movement with capacity and friction constraints
+6. Apply pacing and safety rules, then publish the new budget split
 
 ## 6.2 Input Metrics
 
@@ -240,7 +255,36 @@ After softmax, convert the raw weights into constrained target shares with:
 
 This matches portfolio construction logic where target weights are bounded by policy constraints.
 
-## 6.6 Rebalance Threshold and Execution Friction
+## 6.6 Delta-Inspired Execution Layer
+
+The best way to use the Delta idea is not to replace the scoring model. It is to use Delta as the execution layer that moves budget from current state to target state.
+
+For each platform:
+
+```text
+delta_p = target_share_p - current_share_p
+```
+
+Interpretation:
+
+- positive `delta_p` means the platform is under-allocated relative to target
+- negative `delta_p` means the platform is over-allocated relative to target
+
+This mirrors the deficit concept in cross-chain liquidity balancing.
+
+Execution policy:
+
+- do not move if the largest delta is below threshold
+- move gradually rather than instantly
+- damp large positive moves if platform capacity appears constrained
+- preserve floors and caps after each execution step
+
+This creates a two-layer optimizer:
+
+- layer 1 decides where budget should go
+- layer 2 decides how fast and how safely to move it
+
+## 6.7 Rebalance Threshold and Execution Friction
 
 The system should not move budget on every small ranking change.
 
@@ -278,7 +322,25 @@ Where:
 
 This is directly inspired by cross-token rebalancing systems where the model must weigh target optimality against the cost of moving capital.
 
-## 6.7 Apply Business Constraints
+## 6.8 Platform Bandwidth and Capacity
+
+Stargate's Delta system uses bandwidth and route balancing. In ads, the closest equivalent is platform delivery capacity.
+
+Ad-platform capacity signals may include:
+
+- recent spend velocity
+- delivery stability
+- audience saturation
+- creative fatigue
+- policy throttling
+
+For the POC, a simple proxy can be used:
+
+- if recent delivery volume is already high, damp further upward allocation changes
+
+This prevents the optimizer from over-rotating into a platform that looks strong in the short term but may not absorb more budget efficiently.
+
+## 6.9 Apply Business Constraints
 
 After deriving `target_share_p`, enforce:
 
@@ -290,7 +352,7 @@ After deriving `target_share_p`, enforce:
 
 These values are suitable defaults for the POC and should be configurable.
 
-## 6.8 Budget Pacing Layer
+## 6.10 Budget Pacing Layer
 
 The optimizer should not only choose shares; it should also decide how fast to spend.
 
@@ -307,7 +369,7 @@ Rules:
 
 This separates "where budget should go" from "how fast the campaign should spend."
 
-## 6.9 Delayed Conversion Handling
+## 6.11 Delayed Conversion Handling
 
 Some platforms or products have delayed conversion attribution. To avoid penalizing those channels too early:
 
@@ -349,7 +411,9 @@ Then:
 
 - apply softmax
 - enforce floors and caps
+- compute `delta = target - current`
 - rebalance only when drift is above threshold
+- execute bounded delta movement toward target
 - apply friction and smoothing against the previous allocation
 
 Allocation smoothing:
@@ -480,12 +544,14 @@ The right algorithm for this product is not a single formula, but a decision sta
 
 - normalized multi-metric scoring
 - confidence-aware exploration
+- target weight construction
+- Delta-inspired execution against target/current gaps
 - threshold-based portfolio rebalancing
 - reallocation friction modeled after capital movement cost
 - constrained allocation conversion
 - pacing and compliance guardrails
 
-For this POC, a constrained UCB-style bandit with smoothing is the best balance of:
+For this POC, a constrained UCB-style bandit combined with Delta-inspired execution is the best balance of:
 
 - simplicity
 - explainability

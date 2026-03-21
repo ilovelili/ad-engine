@@ -41,6 +41,11 @@ type platformMetrics struct {
 	score             float64
 }
 
+type deltaExecutionPlan struct {
+	targetAllocations []float64
+	maxDrift          float64
+}
+
 func NewOptimizer() *Optimizer {
 	return &Optimizer{
 		publishers: map[string]Publisher{
@@ -93,69 +98,9 @@ func (o *Optimizer) Rebalance(allocations []domain.PlatformAllocation) []domain.
 		priorScore:           0.5,
 	}
 
-	metrics := make([]platformMetrics, len(allocations))
-	roasValues := make([]float64, len(allocations))
-	cvrValues := make([]float64, len(allocations))
-	ctrValues := make([]float64, len(allocations))
-	cpaValues := make([]float64, len(allocations))
-	totalRounds := float64(len(allocations)) + float64(totalPublishedAds(allocations)) + 1
-
-	for i, allocation := range allocations {
-		metrics[i] = platformMetrics{
-			currentAllocation: allocation.AllocationPct,
-			roas:              ratio(allocation.Revenue, allocation.Spend),
-			cvr:               ratio(float64(allocation.Conversions), float64(allocation.Clicks)),
-			ctr:               ratio(float64(allocation.Clicks), float64(allocation.Impressions)),
-			cpa:               safeCPA(allocation.Spend, allocation.Conversions),
-			confidence:        confidenceScore(allocation.Impressions, allocation.Conversions),
-			explorationBonus:  cfg.explorationWeight * math.Sqrt(math.Log(totalRounds)/(float64(allocation.PublishedAds)+1)),
-		}
-		roasValues[i] = metrics[i].roas
-		cvrValues[i] = metrics[i].cvr
-		ctrValues[i] = metrics[i].ctr
-		cpaValues[i] = metrics[i].cpa
-	}
-
-	normalizedROAS := normalizeSeries(roasValues)
-	normalizedCVR := normalizeSeries(cvrValues)
-	normalizedCTR := normalizeSeries(ctrValues)
-	normalizedCPA := normalizeSeries(cpaValues)
-
-	decisionScores := make([]float64, len(allocations))
-	for i := range metrics {
-		rawScore := (normalizedROAS[i] * 0.45) + (normalizedCVR[i] * 0.25) + (normalizedCTR[i] * 0.15) - (normalizedCPA[i] * 0.15)
-		metrics[i].score = (metrics[i].confidence * rawScore) + ((1 - metrics[i].confidence) * cfg.priorScore) + metrics[i].explorationBonus
-		decisionScores[i] = metrics[i].score
-	}
-
-	rawTargets := constrainedTargets(softmax(decisionScores, cfg.temperature), cfg.minAllocation, cfg.maxAllocation)
-	maxDrift := 0.0
-	for i, target := range rawTargets {
-		drift := math.Abs(target - metrics[i].currentAllocation)
-		if drift > maxDrift {
-			maxDrift = drift
-		}
-	}
-
-	// Borrowed from token-portfolio rebalancing: do nothing until drift is large enough
-	// to justify the cost of moving capital across venues.
-	if maxDrift < cfg.driftThreshold {
-		return allocations
-	}
-
-	scale := math.Min(1, cfg.maxStepPerCycle/maxDrift)
-	friction := math.Max(0.25, 1-(cfg.reallocationFriction*maxDrift))
-	blend := cfg.smoothingFactor * friction * scale
-
-	for i := range allocations {
-		target := metrics[i].currentAllocation + ((rawTargets[i] - metrics[i].currentAllocation) * blend)
-		target = math.Round(target*10) / 10
-		allocations[i].AllocationPct = target
-		allocations[i].LastSyncedAt = time.Now()
-	}
-
-	normalizeAllocations(allocations, cfg.minAllocation, cfg.maxAllocation)
-	return allocations
+	metrics := buildPlatformMetrics(allocations, cfg)
+	plan := buildDeltaExecutionPlan(metrics, cfg)
+	return executeDeltaRebalance(allocations, plan, cfg)
 }
 
 func BuildSnapshot(campaign domain.Campaign, allocations []domain.PlatformAllocation, lastRebalance time.Time) domain.CampaignSnapshot {
@@ -209,6 +154,108 @@ func totalPublishedAds(allocations []domain.PlatformAllocation) int64 {
 		total += allocation.PublishedAds
 	}
 	return total
+}
+
+func buildPlatformMetrics(allocations []domain.PlatformAllocation, cfg optimizerConfig) []platformMetrics {
+	metrics := make([]platformMetrics, len(allocations))
+	roasValues := make([]float64, len(allocations))
+	cvrValues := make([]float64, len(allocations))
+	ctrValues := make([]float64, len(allocations))
+	cpaValues := make([]float64, len(allocations))
+	totalRounds := float64(len(allocations)) + float64(totalPublishedAds(allocations)) + 1
+
+	for i, allocation := range allocations {
+		metrics[i] = platformMetrics{
+			currentAllocation: allocation.AllocationPct,
+			roas:              ratio(allocation.Revenue, allocation.Spend),
+			cvr:               ratio(float64(allocation.Conversions), float64(allocation.Clicks)),
+			ctr:               ratio(float64(allocation.Clicks), float64(allocation.Impressions)),
+			cpa:               safeCPA(allocation.Spend, allocation.Conversions),
+			confidence:        confidenceScore(allocation.Impressions, allocation.Conversions),
+			explorationBonus:  cfg.explorationWeight * math.Sqrt(math.Log(totalRounds)/(float64(allocation.PublishedAds)+1)),
+		}
+		roasValues[i] = metrics[i].roas
+		cvrValues[i] = metrics[i].cvr
+		ctrValues[i] = metrics[i].ctr
+		cpaValues[i] = metrics[i].cpa
+	}
+
+	normalizedROAS := normalizeSeries(roasValues)
+	normalizedCVR := normalizeSeries(cvrValues)
+	normalizedCTR := normalizeSeries(ctrValues)
+	normalizedCPA := normalizeSeries(cpaValues)
+
+	for i := range metrics {
+		rawScore := (normalizedROAS[i] * 0.45) + (normalizedCVR[i] * 0.25) + (normalizedCTR[i] * 0.15) - (normalizedCPA[i] * 0.15)
+		metrics[i].score = (metrics[i].confidence * rawScore) + ((1 - metrics[i].confidence) * cfg.priorScore) + metrics[i].explorationBonus
+	}
+
+	return metrics
+}
+
+func buildDeltaExecutionPlan(metrics []platformMetrics, cfg optimizerConfig) deltaExecutionPlan {
+	decisionScores := make([]float64, len(metrics))
+	for i, metric := range metrics {
+		decisionScores[i] = metric.score
+	}
+
+	targets := constrainedTargets(softmax(decisionScores, cfg.temperature), cfg.minAllocation, cfg.maxAllocation)
+	maxDrift := 0.0
+	for i, target := range targets {
+		drift := math.Abs(target - metrics[i].currentAllocation)
+		if drift > maxDrift {
+			maxDrift = drift
+		}
+	}
+
+	return deltaExecutionPlan{
+		targetAllocations: targets,
+		maxDrift:          maxDrift,
+	}
+}
+
+func executeDeltaRebalance(allocations []domain.PlatformAllocation, plan deltaExecutionPlan, cfg optimizerConfig) []domain.PlatformAllocation {
+	// Delta-inspired execution: do nothing until the target/current gap is large enough
+	// to justify moving budget across platforms.
+	if plan.maxDrift < cfg.driftThreshold {
+		return allocations
+	}
+
+	scale := math.Min(1, cfg.maxStepPerCycle/plan.maxDrift)
+	friction := math.Max(0.25, 1-(cfg.reallocationFriction*plan.maxDrift))
+	blend := cfg.smoothingFactor * friction * scale
+
+	for i := range allocations {
+		target := allocations[i].AllocationPct + ((plan.targetAllocations[i] - allocations[i].AllocationPct) * blend)
+		target = applyBandwidthCap(allocations[i], target, cfg.maxStepPerCycle)
+		allocations[i].AllocationPct = math.Round(target*10) / 10
+		allocations[i].LastSyncedAt = time.Now()
+	}
+
+	normalizeAllocations(allocations, cfg.minAllocation, cfg.maxAllocation)
+	return allocations
+}
+
+func applyBandwidthCap(allocation domain.PlatformAllocation, target, maxStepPerCycle float64) float64 {
+	delta := target - allocation.AllocationPct
+	if delta > maxStepPerCycle {
+		delta = maxStepPerCycle
+	}
+	if delta < -maxStepPerCycle {
+		delta = -maxStepPerCycle
+	}
+
+	// Treat recent delivery volume as a rough capacity signal. As a platform saturates,
+	// damp upward movement to avoid over-allocating into a narrow audience pocket.
+	capacityDampener := 1.0
+	if allocation.PublishedAds > 0 {
+		capacityDampener = math.Max(0.55, 1-(math.Log1p(float64(allocation.PublishedAds))*0.04))
+	}
+	if delta > 0 {
+		delta *= capacityDampener
+	}
+
+	return allocation.AllocationPct + delta
 }
 
 func confidenceScore(impressions, conversions int64) float64 {
