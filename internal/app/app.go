@@ -15,10 +15,12 @@ import (
 )
 
 type App struct {
-	store   *store.Store
-	cache   *cache.Cache
-	engine  *service.Engine
-	handler *httpapi.Handler
+	store             *store.Store
+	cache             *cache.Cache
+	engine            *service.Engine
+	connectionService *service.PlatformConnectionService
+	metaOAuth         *service.MetaOAuthService
+	handler           *httpapi.Handler
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -38,13 +40,29 @@ func New(cfg config.Config) (*App, error) {
 	}
 
 	engine := service.NewEngine(st, c, rebalanceEvery)
-	handler := httpapi.NewHandler(engine)
+	sealer := service.NewCredentialSealer(cfg.ConnectionSecret)
+	connectionService := service.NewPlatformConnectionService(
+		st,
+		sealer,
+		service.NewInstagramConnector(cfg.MetaGraphBaseURL, cfg.MetaGraphAPIVersion),
+	)
+	metaOAuth := service.NewMetaOAuthService(
+		cfg.MetaAppID,
+		cfg.MetaAppSecret,
+		cfg.MetaRedirectURI,
+		cfg.MetaGraphBaseURL,
+		cfg.MetaGraphAPIVersion,
+		cfg.MetaOAuthScopes,
+	)
+	handler := httpapi.NewHandler(engine, connectionService, metaOAuth)
 
 	return &App{
-		store:   st,
-		cache:   c,
-		engine:  engine,
-		handler: handler,
+		store:             st,
+		cache:             c,
+		engine:            engine,
+		connectionService: connectionService,
+		metaOAuth:         metaOAuth,
+		handler:           handler,
 	}, nil
 }
 

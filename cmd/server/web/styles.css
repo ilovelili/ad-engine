@@ -43,7 +43,9 @@ body {
 .allocation-card,
 .trend-metric,
 .timeline-card,
-.trend-stage {
+.trend-stage,
+.connection-card,
+.supported-platform {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -109,6 +111,12 @@ span {
   padding: 24px;
 }
 
+.connect-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.94)),
+    radial-gradient(circle at top left, rgba(39, 39, 217, 0.1), transparent 32%);
+}
+
 .momentum-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.9)),
@@ -128,6 +136,115 @@ span {
   gap: 24px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.primary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.form-status {
+  margin: 0;
+}
+
+.form-status.is-success {
+  color: var(--accent);
+}
+
+.form-status.is-error,
+.connection-error {
+  color: #b42318;
+}
+
+.supported-notes {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.supported-platform {
+  padding: 18px;
+}
+
+.supported-platform-header,
+.connection-card-header,
+.ad-account-item,
+.connection-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.supported-platform-header,
+.connection-card-header {
+  align-items: baseline;
+}
+
+.connection-cards {
+  display: grid;
+  gap: 16px;
+}
+
+.connection-card {
+  padding: 18px;
+}
+
+.connection-card-empty {
+  text-align: center;
+}
+
+.connection-platform,
+.connection-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(39, 39, 217, 0.08);
+  color: var(--x);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.connection-meta {
+  flex-wrap: wrap;
+  margin: 16px 0 10px;
+}
+
+.connection-detail,
+.supported-platform p,
+.ad-account-item p {
+  margin-bottom: 0;
+}
+
+.ad-account-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.ad-account-item {
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(82, 96, 109, 0.12);
+}
+
+.ad-account-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: end;
 }
 
 .trend-summary {
@@ -337,5 +454,17 @@ td {
   .trend-summary,
   .momentum-layout {
     grid-template-columns: 1fr;
+  }
+
+  .supported-platform-header,
+  .connection-card-header,
+  .ad-account-item,
+  .connection-meta {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .ad-account-stats {
+    justify-content: start;
   }
 }

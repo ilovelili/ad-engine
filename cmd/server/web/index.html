@@ -11,13 +11,42 @@
       <section class="hero">
         <div>
           <p class="eyebrow">Adaptive Delivery Engine</p>
-          <h1>Cross-post campaigns and rebalance budget across X, TikTok, and Instagram.</h1>
+          <h1>Connect ad platforms, sync account access, and rebalance spend across the mix.</h1>
           <p class="lede">
-            This proof of concept simulates automated ad delivery and continuously shifts budget
-            toward the best-performing channel mix.
+            This proof of concept now includes a platform connection flow for Instagram via Meta
+            APIs, alongside the simulated delivery engine and budget rebalancing dashboard.
           </p>
         </div>
         <button id="rebalanceButton" class="primary">Run rebalance now</button>
+      </section>
+
+      <section class="panel connect-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Platform Access</p>
+            <h2>Connect an Instagram advertising account</h2>
+          </div>
+        </div>
+        <div class="connect-actions">
+          <a id="connectButton" class="primary primary-link" href="/api/v1/oauth/meta/start">
+            Connect with Meta
+          </a>
+          <p id="connectionStatus" class="form-status">
+            You will be redirected to Meta to approve access, then returned here automatically.
+          </p>
+        </div>
+        <div id="supportedPlatformNotes" class="supported-notes"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Connected Accounts</p>
+            <h2>Platform connections</h2>
+          </div>
+          <p class="campaign-meta">Saved connections keep the latest fetched ad account snapshot.</p>
+        </div>
+        <div id="connectionCards" class="connection-cards"></div>
       </section>
 
       <section class="summary">

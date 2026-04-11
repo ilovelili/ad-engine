@@ -3,6 +3,7 @@ const money = (value, currency) =>
 
 const pct = (value) => `${Number(value || 0).toFixed(1)}%`;
 const number = (value) => new Intl.NumberFormat("en-US").format(Math.round(value || 0));
+const time = (value) => (value ? new Date(value).toLocaleString() : "Not yet synced");
 
 const allocationBars = document.getElementById("allocationBars");
 const performanceTable = document.getElementById("performanceTable");
@@ -12,13 +13,131 @@ const trendChart = document.getElementById("trendChart");
 const trendHeadline = document.getElementById("trendHeadline");
 const trendDelta = document.getElementById("trendDelta");
 const timelineList = document.getElementById("timelineList");
+const connectButton = document.getElementById("connectButton");
+const connectionStatus = document.getElementById("connectionStatus");
+const supportedPlatformNotes = document.getElementById("supportedPlatformNotes");
+const connectionCards = document.getElementById("connectionCards");
+const queryParams = new URLSearchParams(window.location.search);
 
-async function fetchDashboard() {
-  const response = await fetch("/api/v1/dashboard");
+async function fetchJSON(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`dashboard request failed: ${response.status}`);
+    throw new Error(payload.error || `request failed: ${response.status}`);
   }
-  return response.json();
+  return payload;
+}
+
+const fetchDashboard = () => fetchJSON("/api/v1/dashboard");
+const fetchConnections = () => fetchJSON("/api/v1/connections");
+
+function renderSupportedPlatforms(platforms) {
+  supportedPlatformNotes.innerHTML = platforms
+    .map(
+      (platform) => `
+        <article class="supported-platform">
+          <div class="supported-platform-header">
+            <strong>${platform.name}</strong>
+            <span>${platform.authenticationModel}</span>
+          </div>
+          ${(platform.notes || []).map((note) => `<p>${note}</p>`).join("")}
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderOAuthStatus() {
+  const oauthStatus = queryParams.get("oauth");
+  const message = queryParams.get("message");
+  if (!oauthStatus) {
+    return;
+  }
+
+  connectionStatus.textContent =
+    message ||
+    (oauthStatus === "oauth_success"
+      ? "Meta OAuth completed successfully."
+      : "Meta OAuth could not be completed.");
+  connectionStatus.className = `form-status ${
+    oauthStatus === "oauth_success" ? "is-success" : "is-error"
+  }`;
+
+  const cleanURL = `${window.location.pathname}${window.location.hash || ""}`;
+  window.history.replaceState({}, document.title, cleanURL);
+}
+
+function renderConnections(view) {
+  renderSupportedPlatforms(view.supportedPlatforms || []);
+
+  if (!view.connections.length) {
+    connectionCards.innerHTML = `
+      <article class="connection-card connection-card-empty">
+        <strong>No connected platforms yet</strong>
+        <p>Connect with Meta above to approve access and pull available ad accounts.</p>
+      </article>
+    `;
+    return;
+  }
+
+  connectionCards.innerHTML = view.connections
+    .map(
+      (connection) => `
+        <article class="connection-card">
+          <div class="connection-card-header">
+            <div>
+              <span class="connection-platform">${connection.platform}</span>
+              <h3>${connection.accountLabel || connection.displayName || connection.accountIdentifier}</h3>
+            </div>
+            <span class="connection-badge">${connection.status}</span>
+          </div>
+          <div class="connection-meta">
+            <span>Account key: ${connection.accountIdentifier}</span>
+            <span>Meta user ID: ${connection.externalAccountId || "Unavailable"}</span>
+            <span>Last validated: ${time(connection.lastValidatedAt)}</span>
+          </div>
+          ${
+            connection.instagramBusinessAccountId
+              ? `<p class="connection-detail">Instagram business account ID: ${connection.instagramBusinessAccountId}</p>`
+              : ""
+          }
+          ${
+            connection.scopes?.length
+              ? `<p class="connection-detail">Expected scopes: ${connection.scopes.join(", ")}</p>`
+              : ""
+          }
+          ${
+            connection.lastError
+              ? `<p class="connection-error">Last error: ${connection.lastError}</p>`
+              : ""
+          }
+          <div class="ad-account-list">
+            ${
+              connection.adAccounts.length
+                ? connection.adAccounts
+                    .map(
+                      (account) => `
+                        <article class="ad-account-item">
+                          <div>
+                            <strong>${account.name || account.id}</strong>
+                            <p>${account.id}</p>
+                          </div>
+                          <div class="ad-account-stats">
+                            <span>${account.status}</span>
+                            <span>${account.currency || "N/A"}</span>
+                            <span>${account.timezone || "Timezone unavailable"}</span>
+                          </div>
+                        </article>
+                      `
+                    )
+                    .join("")
+                : `<p class="connection-detail">No ad accounts were returned for this token.</p>`
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 function renderDashboard(snapshot) {
@@ -219,11 +338,14 @@ function renderMomentum(snapshot) {
 
 async function load() {
   try {
-    const snapshot = await fetchDashboard();
+    const [snapshot, connections] = await Promise.all([fetchDashboard(), fetchConnections()]);
     renderDashboard(snapshot);
+    renderConnections(connections);
   } catch (error) {
     document.getElementById("campaignName").textContent = "Unable to load dashboard";
     document.getElementById("campaignMeta").textContent = error.message;
+    connectionStatus.textContent = error.message;
+    connectionStatus.className = "form-status is-error";
   }
 }
 
@@ -231,11 +353,7 @@ rebalanceButton.addEventListener("click", async () => {
   rebalanceButton.disabled = true;
   rebalanceButton.textContent = "Rebalancing...";
   try {
-    const response = await fetch("/api/v1/rebalance", { method: "POST" });
-    if (!response.ok) {
-      throw new Error(`rebalance request failed: ${response.status}`);
-    }
-    renderDashboard(await response.json());
+    renderDashboard(await fetchJSON("/api/v1/rebalance", { method: "POST" }));
   } catch (error) {
     document.getElementById("campaignMeta").textContent = error.message;
   } finally {
@@ -244,5 +362,11 @@ rebalanceButton.addEventListener("click", async () => {
   }
 });
 
+connectButton.addEventListener("click", () => {
+  connectionStatus.textContent = "Redirecting to Meta to authorize account access...";
+  connectionStatus.className = "form-status";
+});
+
+renderOAuthStatus();
 load();
 setInterval(load, 8000);

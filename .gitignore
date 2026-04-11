@@ -1,3 +1,4 @@
 .gocache/
 .gomodcache/
 adengine.db
+.env

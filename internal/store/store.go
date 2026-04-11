@@ -1,8 +1,10 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -25,6 +27,7 @@ func New(dsn string) (*Store, error) {
 		&domain.Campaign{},
 		&domain.PlatformAllocation{},
 		&domain.DeliveryEvent{},
+		&domain.PlatformConnection{},
 	); err != nil {
 		return nil, fmt.Errorf("migrate database: %w", err)
 	}
@@ -96,4 +99,92 @@ func (s *Store) AddDeliveryEvents(events []domain.DeliveryEvent) error {
 		return nil
 	}
 	return s.db.Create(&events).Error
+}
+
+func (s *Store) ListPlatformConnections() ([]domain.PlatformConnection, error) {
+	var connections []domain.PlatformConnection
+	err := s.db.Order("platform asc, account_label asc, account_identifier asc").Find(&connections).Error
+	return connections, err
+}
+
+func (s *Store) SavePlatformConnection(connection *domain.PlatformConnection) error {
+	var existing domain.PlatformConnection
+	err := s.db.Where("platform = ? AND account_identifier = ?", connection.Platform, connection.AccountIdentifier).
+		First(&existing).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return s.db.Create(connection).Error
+	}
+	if err != nil {
+		return err
+	}
+
+	existing.AccountLabel = connection.AccountLabel
+	existing.ExternalAccountID = connection.ExternalAccountID
+	existing.Status = connection.Status
+	existing.CredentialNonce = connection.CredentialNonce
+	existing.CredentialCiphertext = connection.CredentialCiphertext
+	existing.Scopes = connection.Scopes
+	existing.LastValidatedAt = connection.LastValidatedAt
+	existing.LastSyncAt = connection.LastSyncAt
+	existing.LastError = connection.LastError
+	existing.MetadataJSON = connection.MetadataJSON
+	existing.AdAccountsJSON = connection.AdAccountsJSON
+
+	if err := s.db.Save(&existing).Error; err != nil {
+		return err
+	}
+
+	connection.ID = existing.ID
+	connection.CreatedAt = existing.CreatedAt
+	connection.UpdatedAt = existing.UpdatedAt
+	return nil
+}
+
+func BuildConnectionSnapshot(connection domain.PlatformConnection) domain.PlatformConnectionSnapshot {
+	snapshot := domain.PlatformConnectionSnapshot{
+		ID:                connection.ID,
+		Platform:          connection.Platform,
+		AccountLabel:      connection.AccountLabel,
+		AccountIdentifier: connection.AccountIdentifier,
+		ExternalAccountID: connection.ExternalAccountID,
+		Status:            connection.Status,
+		Scopes:            splitCSV(connection.Scopes),
+		LastValidatedAt:   connection.LastValidatedAt,
+		LastSyncAt:        connection.LastSyncAt,
+		LastError:         connection.LastError,
+		AdAccounts:        []domain.AdAccount{},
+	}
+
+	if connection.MetadataJSON != "" {
+		var metadata domain.PlatformConnectionMetadata
+		if err := json.Unmarshal([]byte(connection.MetadataJSON), &metadata); err == nil {
+			snapshot.DisplayName = metadata.DisplayName
+			snapshot.InstagramBusinessAccountID = metadata.InstagramBusinessAccountID
+		}
+	}
+
+	if connection.AdAccountsJSON != "" {
+		var adAccounts []domain.AdAccount
+		if err := json.Unmarshal([]byte(connection.AdAccountsJSON), &adAccounts); err == nil {
+			snapshot.AdAccounts = adAccounts
+		}
+	}
+
+	return snapshot
+}
+
+func splitCSV(value string) []string {
+	if value == "" {
+		return []string{}
+	}
+
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
